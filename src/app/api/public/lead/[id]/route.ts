@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { sql } from '@vercel/postgres';
 
 // PATCH - Marcar lead como importado
 export async function PATCH(
@@ -10,15 +10,15 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     
-    const lead = await db.publicLead.update({
-      where: { id },
-      data: {
-        imported: body.imported ?? true,
-        importedAt: body.imported ? new Date() : null,
-      },
-    });
+    const imported = body.imported ?? true;
 
-    return NextResponse.json({ success: true, lead });
+    await sql`
+      UPDATE public_leads 
+      SET imported = ${imported}, "importedAt" = ${imported ? new Date().toISOString() : null}
+      WHERE id = ${id}
+    `;
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating public lead:', error);
     return NextResponse.json(
@@ -36,9 +36,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    await db.publicLead.delete({
-      where: { id },
-    });
+    await sql`DELETE FROM public_leads WHERE id = ${id}`;
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { sql } from '@vercel/postgres';
 
 // POST - Crear nuevo lead desde formulario público
 export async function POST(request: NextRequest) {
@@ -16,25 +16,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear el lead público
-    const publicLead = await db.publicLead.create({
-      data: {
-        firstName,
-        lastName,
-        email: email || null,
-        phone: phone || null,
-        whatsapp: whatsapp || null,
-        company: company || null,
-        message: message || null,
-        source: 'formulario',
-        projectId: projectId || null,
-      },
-    });
+    // Crear el lead público usando Vercel Postgres
+    const result = await sql`
+      INSERT INTO public_leads (id, "firstName", "lastName", email, phone, whatsapp, company, message, source, "createdAt", imported)
+      VALUES (
+        gen_random_uuid(),
+        ${firstName},
+        ${lastName},
+        ${email || null},
+        ${phone || null},
+        ${whatsapp || null},
+        ${company || null},
+        ${message || null},
+        'formulario',
+        NOW(),
+        false
+      )
+      RETURNING id
+    `;
 
     return NextResponse.json({ 
       success: true, 
       message: 'Gracias por contactarnos. Te responderemos pronto.',
-      leadId: publicLead.id 
+      leadId: result.rows[0]?.id 
     });
   } catch (error) {
     console.error('Error creating public lead:', error);
@@ -51,16 +55,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const imported = searchParams.get('imported');
     
-    const where = imported !== null 
-      ? { imported: imported === 'true' } 
-      : {};
+    let query;
+    if (imported !== null) {
+      query = sql`SELECT * FROM public_leads WHERE imported = ${imported === 'true'} ORDER BY "createdAt" DESC`;
+    } else {
+      query = sql`SELECT * FROM public_leads ORDER BY "createdAt" DESC`;
+    }
 
-    const leads = await db.publicLead.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const result = await query;
 
-    return NextResponse.json({ leads });
+    return NextResponse.json({ leads: result.rows });
   } catch (error) {
     console.error('Error fetching public leads:', error);
     return NextResponse.json(
