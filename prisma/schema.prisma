@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../db/crm.db"
+}
+
+// Leads públicos que llegan del formulario
+model PublicLead {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  whatsapp    String?
+  company     String?
+  message     String?
+  source      String   @default("formulario")
+  createdAt   DateTime @default(now())
+  imported    Boolean  @default(false)
+  importedAt  DateTime?
+  projectId   String?
+}
