@@ -79,6 +79,7 @@ import {
   ChevronsRight,
   Inbox,
   UserPlus,
+  Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import GoogleDriveSync from '@/components/GoogleDriveSync';
@@ -1481,6 +1482,119 @@ export default function MerkaCRM() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleExport} className="bg-emerald-600 hover:bg-emerald-700"><Download className="h-4 w-4 mr-2" />Exportar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Leads del Formulario */}
+      <Dialog open={publicLeadsDialogOpen} onOpenChange={setPublicLeadsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Inbox className="h-5 w-5 text-emerald-600" />
+              Leads del Formulario
+            </DialogTitle>
+            <DialogDescription>
+              Personas que han llenado el formulario público y están pendientes de importar
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isLoadingPublicLeads ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+              </div>
+            ) : publicLeads.length === 0 ? (
+              <div className="text-center py-8">
+                <Inbox className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500">No hay leads pendientes</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Comparte el link: <code className="bg-slate-100 px-2 py-1 rounded">/formulario</code>
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <Badge variant="secondary">{publicLeads.length} pendientes</Badge>
+                  <Button 
+                    size="sm" 
+                    onClick={handleImportAllPublicLeads}
+                    disabled={!currentProject}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Importar todos
+                  </Button>
+                </div>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {publicLeads.map((lead) => (
+                    <Card key={lead.id} className="border-l-4 border-l-emerald-500">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{lead.firstName} {lead.lastName}</h4>
+                            {lead.company && (
+                              <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                <Building2 className="h-3 w-3" />{lead.company}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {lead.email && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Mail className="h-3 w-3 mr-1" />{lead.email}
+                                </Badge>
+                              )}
+                              {lead.whatsapp && (
+                                <Badge variant="outline" className="text-xs">
+                                  <MessageCircle className="h-3 w-3 mr-1" />{lead.whatsapp}
+                                </Badge>
+                              )}
+                              {lead.phone && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Phone className="h-3 w-3 mr-1" />{lead.phone}
+                                </Badge>
+                              )}
+                            </div>
+                            {lead.message && (
+                              <p className="text-sm text-slate-600 mt-2 bg-slate-50 p-2 rounded">
+                                "{lead.message}"
+                              </p>
+                            )}
+                            <p className="text-xs text-slate-400 mt-2">
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {new Date(lead.createdAt).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          
+                          <Button
+                            size="sm"
+                            onClick={() => handleImportPublicLead(lead)}
+                            disabled={!currentProject}
+                            className="bg-emerald-600 hover:bg-emerald-700 ml-4"
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Importar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublicLeadsDialogOpen(false)}>
+              Cerrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
