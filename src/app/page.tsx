@@ -1189,17 +1189,11 @@ export default function MerkaCRM() {
               </button>
             </div>
             
-            <ScrollArea className="h-full">
-              <div 
-                ref={pipelineScrollRef}
-                className="p-4 overflow-x-auto"
-                onScroll={(e) => {
-                  const target = e.target as HTMLDivElement;
-                  setCanScrollLeft(target.scrollLeft > 20);
-                  setCanScrollRight(target.scrollLeft < target.scrollWidth - target.clientWidth - 20);
-                }}
-              >
-                <div className="flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
+            <div 
+              ref={pipelineScrollRef}
+              className="h-full overflow-x-auto overflow-y-auto p-4"
+            >
+              <div className="flex gap-4 pb-4" style={{ minWidth: 'max-content' }}>
                   {pipelineStages.map((stage) => (
                     <div key={stage.key} className="w-72 flex-shrink-0">
                       <div className="rounded-t-lg p-3 flex items-center justify-between" style={{ backgroundColor: `${stage.color}20` }}>
@@ -1218,8 +1212,7 @@ export default function MerkaCRM() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </main>
