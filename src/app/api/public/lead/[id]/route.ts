@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@vercel/postgres';
+
+function getClient() {
+  return createClient({
+    connectionString: process.env.merka_crm_db_POSTGRES_URL || process.env.POSTGRES_URL,
+  });
+}
 
 // PATCH - Marcar lead como importado
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const client = getClient();
+  
   try {
+    await client.connect();
+    
     const { id } = await params;
     const body = await request.json();
     
-    const { sql } = await import('@vercel/postgres');
-    
-    const result = await sql`
+    const result = await client.sql`
       UPDATE public_leads 
       SET imported = ${body.imported ?? true},
           "importedAt" = ${body.imported ? new Date().toISOString() : null}
@@ -33,6 +42,8 @@ export async function PATCH(
       { error: 'Error al actualizar lead' },
       { status: 500 }
     );
+  } finally {
+    await client.end();
   }
 }
 
@@ -41,12 +52,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const client = getClient();
+  
   try {
+    await client.connect();
+    
     const { id } = await params;
     
-    const { sql } = await import('@vercel/postgres');
-    
-    const result = await sql`
+    const result = await client.sql`
       DELETE FROM public_leads WHERE id = ${id}
       RETURNING id
     `;
@@ -65,5 +78,7 @@ export async function DELETE(
       { error: 'Error al eliminar lead' },
       { status: 500 }
     );
+  } finally {
+    await client.end();
   }
 }

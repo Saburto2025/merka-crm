@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@vercel/postgres';
 
-// Usar fetch directo a Vercel Postgres REST API
-async function query(sqlQuery: string, params: unknown[] = []) {
-  const databaseUrl = process.env.POSTGRES_URL;
-  
-  if (!databaseUrl) {
-    throw new Error('POSTGRES_URL no está configurada');
-  }
-
-  // Usar sql de @vercel/postgres si está disponible
-  const { sql } = await import('@vercel/postgres');
-  return await sql.query(sqlQuery, params);
+// Crear cliente con la variable correcta
+function getClient() {
+  return createClient({
+    connectionString: process.env.merka_crm_db_POSTGRES_URL || process.env.POSTGRES_URL,
+  });
 }
 
 // POST - Crear nuevo lead desde formulario público
 export async function POST(request: NextRequest) {
+  const client = getClient();
+  
   try {
+    await client.connect();
+    
     const body = await request.json();
     const { firstName, lastName, email, whatsapp, company, message } = body;
 
@@ -27,11 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Importar sql dinámicamente
-    const { sql } = await import('@vercel/postgres');
-
     // Crear tabla si no existe
-    await sql`
+    await client.sql`
       CREATE TABLE IF NOT EXISTS public_leads (
         id SERIAL PRIMARY KEY,
         "firstName" VARCHAR(255) NOT NULL,
@@ -48,7 +44,7 @@ export async function POST(request: NextRequest) {
     `;
 
     // Insertar el lead
-    const result = await sql`
+    const result = await client.sql`
       INSERT INTO public_leads ("firstName", "lastName", email, whatsapp, company, message, source, "createdAt", imported)
       VALUES (
         ${firstName},
@@ -73,18 +69,22 @@ export async function POST(request: NextRequest) {
     console.error('Error creating public lead:', error);
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     return NextResponse.json(
-      { error: `Error: ${errorMessage}. Verifica la configuración de la base de datos.` },
+      { error: `Error: ${errorMessage}` },
       { status: 500 }
     );
+  } finally {
+    await client.end();
   }
 }
 
 // GET - Obtener leads públicos (para el CRM)
 export async function GET() {
+  const client = getClient();
+  
   try {
-    const { sql } = await import('@vercel/postgres');
+    await client.connect();
     
-    const result = await sql`
+    const result = await client.sql`
       SELECT * FROM public_leads 
       WHERE imported = false 
       ORDER BY "createdAt" DESC
@@ -97,5 +97,7 @@ export async function GET() {
       { error: 'Error al obtener leads' },
       { status: 500 }
     );
+  } finally {
+    await client.end();
   }
 }
