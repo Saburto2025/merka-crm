@@ -10,15 +10,22 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     
-    const imported = body.imported ?? true;
-
-    await sql`
+    const result = await sql`
       UPDATE public_leads 
-      SET imported = ${imported}, "importedAt" = ${imported ? new Date().toISOString() : null}
+      SET imported = ${body.imported ?? true},
+          "importedAt" = ${body.imported ? new Date().toISOString() : null}
       WHERE id = ${id}
+      RETURNING *
     `;
 
-    return NextResponse.json({ success: true });
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Lead no encontrado' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, lead: result.rows[0] });
   } catch (error) {
     console.error('Error updating public lead:', error);
     return NextResponse.json(
@@ -36,7 +43,17 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    await sql`DELETE FROM public_leads WHERE id = ${id}`;
+    const result = await sql`
+      DELETE FROM public_leads WHERE id = ${id}
+      RETURNING id
+    `;
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Lead no encontrado' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,12 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
 
+// Función para crear la tabla si no existe
+async function ensureTable() {
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS public_leads (
+        id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+        "firstName" VARCHAR(255) NOT NULL,
+        "lastName" VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        whatsapp VARCHAR(255),
+        company VARCHAR(255),
+        message TEXT,
+        source VARCHAR(50) DEFAULT 'formulario',
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        imported BOOLEAN DEFAULT false,
+        "importedAt" TIMESTAMP WITH TIME ZONE,
+        "projectId" VARCHAR(255)
+      );
+    `;
+  } catch (error) {
+    console.error('Error ensuring table exists:', error);
+  }
+}
+
 // POST - Crear nuevo lead desde formulario público
 export async function POST(request: NextRequest) {
   try {
+    // Asegurar que la tabla existe
+    await ensureTable();
+    
     const body = await request.json();
     
-    const { firstName, lastName, email, whatsapp, company, message, projectId } = body;
+    const { firstName, lastName, email, whatsapp, company, message } = body;
 
     // Validación básica
     if (!firstName || !lastName) {
@@ -18,9 +45,8 @@ export async function POST(request: NextRequest) {
 
     // Crear el lead público usando Vercel Postgres
     const result = await sql`
-      INSERT INTO public_leads (id, "firstName", "lastName", email, whatsapp, company, message, source, "createdAt", imported)
+      INSERT INTO public_leads ("firstName", "lastName", email, whatsapp, company, message, source, "createdAt", imported)
       VALUES (
-        gen_random_uuid(),
         ${firstName},
         ${lastName},
         ${email || null},
@@ -51,17 +77,18 @@ export async function POST(request: NextRequest) {
 // GET - Obtener leads públicos (para el CRM)
 export async function GET(request: NextRequest) {
   try {
+    // Asegurar que la tabla existe
+    await ensureTable();
+    
     const { searchParams } = new URL(request.url);
     const imported = searchParams.get('imported');
     
-    let query;
+    let result;
     if (imported !== null) {
-      query = sql`SELECT * FROM public_leads WHERE imported = ${imported === 'true'} ORDER BY "createdAt" DESC`;
+      result = await sql`SELECT * FROM public_leads WHERE imported = ${imported === 'true'} ORDER BY "createdAt" DESC`;
     } else {
-      query = sql`SELECT * FROM public_leads ORDER BY "createdAt" DESC`;
+      result = await sql`SELECT * FROM public_leads ORDER BY "createdAt" DESC`;
     }
-
-    const result = await query;
 
     return NextResponse.json({ leads: result.rows });
   } catch (error) {
