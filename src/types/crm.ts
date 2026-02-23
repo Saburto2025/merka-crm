@@ -41,6 +41,7 @@ export const LOST_REASONS: { key: LostReason; label: string; description: string
 // Fuentes de leads
 export const LEAD_SOURCES: { key: string; label: string; icon: string }[] = [
   { key: 'manual', label: 'Manual', icon: '✏️' },
+  { key: 'formulario', label: 'Formulario Web', icon: '🌐' },
   { key: 'whatsapp', label: 'WhatsApp', icon: '📱' },
   { key: 'facebook_organic', label: 'Facebook Orgánico', icon: '📘' },
   { key: 'facebook_ads', label: 'Facebook Ads', icon: '📘💰' },
@@ -174,3 +175,64 @@ export interface UpdateLeadInput {
   nextFollowUpAt?: string;
   customFields?: { fieldId: string; value: string }[];
 }
+
+// Sistema de usuarios
+export type UserRole = 'admin' | 'vendedor' | 'viewer';
+
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+  role: UserRole;
+  name: string;
+  createdAt: string;
+}
+
+export const DEFAULT_USERS: User[] = [
+  { id: '1', username: 'migrante', password: 'crm2025', role: 'admin', name: 'Administrador', createdAt: new Date().toISOString() },
+];
+
+export const ROLE_PERMISSIONS = {
+  admin: {
+    label: 'Administrador',
+    description: 'Acceso total al sistema',
+    canCreateProject: true,
+    canEditProject: true,
+    canDeleteProject: true,
+    canCreateLead: true,
+    canEditLead: true,
+    canDeleteLead: true,
+    canManageUsers: true,
+    canViewStats: true,
+    canExport: true,
+    canImport: true,
+  },
+  vendedor: {
+    label: 'Vendedor',
+    description: 'Puede gestionar leads',
+    canCreateProject: false,
+    canEditProject: false,
+    canDeleteProject: false,
+    canCreateLead: true,
+    canEditLead: true,
+    canDeleteLead: false,
+    canManageUsers: false,
+    canViewStats: true,
+    canExport: true,
+    canImport: true,
+  },
+  viewer: {
+    label: 'Solo Lectura',
+    description: 'Solo puede ver información',
+    canCreateProject: false,
+    canEditProject: false,
+    canDeleteProject: false,
+    canCreateLead: false,
+    canEditLead: false,
+    canDeleteLead: false,
+    canManageUsers: false,
+    canViewStats: true,
+    canExport: false,
+    canImport: false,
+  },
+};

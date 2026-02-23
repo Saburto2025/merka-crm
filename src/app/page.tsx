@@ -6,17 +6,21 @@ import {
   LOST_REASONS, 
   LEAD_SOURCES,
   STAGE_COLORS,
+  DEFAULT_USERS,
+  ROLE_PERMISSIONS,
   type Lead, 
   type Project,
   type CustomField,
   type LeadFile,
   type PipelineStageConfig,
+  type User,
+  type UserRole,
 } from '@/types/crm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -80,6 +84,13 @@ import {
   Inbox,
   UserPlus,
   Phone,
+  BarChart3,
+  Users,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Target,
+  PieChart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import GoogleDriveSync from '@/components/GoogleDriveSync';
@@ -92,12 +103,8 @@ const STORAGE_KEYS = {
   CURRENT_PROJECT: 'merka-current-project',
   PIPELINE_STAGES: 'merka-pipeline-stages',
   AUTH: 'crm-auth',
-};
-
-// ============= CREDENCIALES DE ACCESO =============
-const AUTH_CREDENTIALS = {
-  username: 'migrante',
-  password: 'crm2025',
+  CURRENT_USER: 'crm-current-user',
+  USERS: 'crm-users',
 };
 
 function getFromStorage<T>(key: string, defaultValue: T): T {
@@ -234,6 +241,8 @@ export default function MerkaCRM() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -255,6 +264,11 @@ export default function MerkaCRM() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [pendingStageChange, setPendingStageChange] = useState<{ lead: Lead; newStage: string } | null>(null);
+  
+  // Dashboard y Usuarios
+  const [dashboardDialogOpen, setDashboardDialogOpen] = useState(false);
+  const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({ username: '', password: '', name: '', role: 'vendedor' as UserRole });
   
   const [projectForm, setProjectForm] = useState({ name: '', description: '', color: '#10b981' });
   const [leadForm, setLeadForm] = useState({
@@ -283,12 +297,22 @@ export default function MerkaCRM() {
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
   const [isLoadingPublicLeads, setIsLoadingPublicLeads] = useState(false);
 
+  // Obtener permisos del usuario actual
+  const permissions = currentUser ? ROLE_PERMISSIONS[currentUser.role] : null;
+
   // Initialize from localStorage
   useEffect(() => {
+    // Cargar usuarios
+    const savedUsers = getFromStorage<User[]>(STORAGE_KEYS.USERS, DEFAULT_USERS);
+    setUsers(savedUsers);
+    
     // Check if already authenticated
     const savedAuth = getFromStorage<boolean>(STORAGE_KEYS.AUTH, false);
-    if (savedAuth) {
+    const savedCurrentUser = getFromStorage<User | null>(STORAGE_KEYS.CURRENT_USER, null);
+    
+    if (savedAuth && savedCurrentUser) {
       setIsAuthenticated(true);
+      setCurrentUser(savedCurrentUser);
     }
 
     const savedProjects = getFromStorage<Project[]>(STORAGE_KEYS.PROJECTS, []);
@@ -332,16 +356,20 @@ export default function MerkaCRM() {
   useEffect(() => { if (isHydrated) saveToStorage(STORAGE_KEYS.CURRENT_PROJECT, currentProject); }, [currentProject, isHydrated]);
   useEffect(() => { if (isHydrated) saveToStorage(STORAGE_KEYS.CUSTOM_FIELDS, customFields); }, [customFields, isHydrated]);
   useEffect(() => { if (isHydrated) saveToStorage(STORAGE_KEYS.PIPELINE_STAGES, pipelineStages); }, [pipelineStages, isHydrated]);
+  useEffect(() => { if (isHydrated) saveToStorage(STORAGE_KEYS.USERS, users); }, [users, isHydrated]);
 
   // Auth handlers
   const handleLogin = () => {
     setIsLoggingIn(true);
     setTimeout(() => {
-      if (loginForm.username === AUTH_CREDENTIALS.username && loginForm.password === AUTH_CREDENTIALS.password) {
+      const user = users.find(u => u.username === loginForm.username && u.password === loginForm.password);
+      if (user) {
         setIsAuthenticated(true);
+        setCurrentUser(user);
         saveToStorage(STORAGE_KEYS.AUTH, true);
+        saveToStorage(STORAGE_KEYS.CURRENT_USER, user);
         setLoginForm({ username: '', password: '' });
-        toast.success('Bienvenido a CRM MIGRANTE');
+        toast.success(`Bienvenido, ${user.name}`);
       } else {
         toast.error('Usuario o contraseña incorrectos');
       }
@@ -351,8 +379,47 @@ export default function MerkaCRM() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
     saveToStorage(STORAGE_KEYS.AUTH, false);
+    saveToStorage(STORAGE_KEYS.CURRENT_USER, null);
     toast.success('Sesión cerrada');
+  };
+
+  // User management
+  const handleCreateUser = () => {
+    if (!newUserForm.username || !newUserForm.password || !newUserForm.name) {
+      toast.error('Todos los campos son requeridos');
+      return;
+    }
+    if (users.find(u => u.username === newUserForm.username)) {
+      toast.error('El usuario ya existe');
+      return;
+    }
+    const newUser: User = {
+      id: generateId(),
+      username: newUserForm.username,
+      password: newUserForm.password,
+      name: newUserForm.name,
+      role: newUserForm.role,
+      createdAt: new Date().toISOString(),
+    };
+    setUsers(prev => [...prev, newUser]);
+    setNewUserForm({ username: '', password: '', name: '', role: 'vendedor' });
+    toast.success('Usuario creado exitosamente');
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (userId === '1') {
+      toast.error('No se puede eliminar el usuario administrador principal');
+      return;
+    }
+    if (currentUser?.id === userId) {
+      toast.error('No puedes eliminar tu propio usuario');
+      return;
+    }
+    if (!confirm('¿Eliminar este usuario?')) return;
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    toast.success('Usuario eliminado');
   };
 
   // Project CRUD
@@ -1080,6 +1147,16 @@ export default function MerkaCRM() {
           <div className="flex items-center gap-2 flex-wrap">
             <input type="file" ref={importInputRef} accept=".csv,.xlsx,.xls,.json" onChange={handleImportFile} className="hidden" />
             
+            {/* Botón Dashboard */}
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setDashboardDialogOpen(true)}
+            >
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Dashboard
+            </Button>
+            
             {/* Botón Leads del Formulario */}
             <Button 
               size="sm" 
@@ -1096,11 +1173,11 @@ export default function MerkaCRM() {
               )}
             </Button>
             
-            <Button size="sm" variant="outline" onClick={() => importInputRef.current?.click()} disabled={!currentProject}>
+            <Button size="sm" variant="outline" onClick={() => importInputRef.current?.click()} disabled={!currentProject || !permissions?.canImport}>
               <Upload className="h-4 w-4 mr-1" />Importar
             </Button>
             
-            <Button size="sm" variant="outline" onClick={() => setExportDialogOpen(true)} disabled={!currentProject}>
+            <Button size="sm" variant="outline" onClick={() => setExportDialogOpen(true)} disabled={!currentProject || !permissions?.canExport}>
               <Download className="h-4 w-4 mr-1" />Exportar
             </Button>
             
@@ -1111,8 +1188,15 @@ export default function MerkaCRM() {
             <Button size="sm" variant="outline" onClick={() => setCustomFieldsDialogOpen(true)} disabled={!currentProject}>
               <Settings className="h-4 w-4 mr-1" />Campos
             </Button>
+            
+            {/* Botón Usuarios - Solo Admin */}
+            {permissions?.canManageUsers && (
+              <Button size="sm" variant="outline" onClick={() => setUsersDialogOpen(true)}>
+                <Users className="h-4 w-4 mr-1" />Usuarios
+              </Button>
+            )}
 
-            <Button size="sm" onClick={() => { setLeadForm({ firstName: '', lastName: '', company: '', email: '', whatsapp: '', description: '', source: 'manual', sourceDetails: '', estimatedValue: '', notes: '' }); setLeadFiles([]); setLeadDialogOpen(true); }} disabled={!currentProject} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button size="sm" onClick={() => { setLeadForm({ firstName: '', lastName: '', company: '', email: '', whatsapp: '', description: '', source: 'manual', sourceDetails: '', estimatedValue: '', notes: '' }); setLeadFiles([]); setLeadDialogOpen(true); }} disabled={!currentProject || !permissions?.canCreateLead} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="h-4 w-4 mr-1" />Nuevo Lead
             </Button>
           </div>
@@ -1568,6 +1652,295 @@ export default function MerkaCRM() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setPublicLeadsDialogOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Dashboard de Estadísticas */}
+      <Dialog open={dashboardDialogOpen} onOpenChange={setDashboardDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-emerald-600" />
+              Dashboard de Estadísticas
+            </DialogTitle>
+            <DialogDescription>
+              Resumen del rendimiento de tu pipeline de ventas
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-6">
+            {/* Métricas principales */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Target className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-600">Total Leads</p>
+                      <p className="text-2xl font-bold text-emerald-700">{filteredLeads.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-600">Activos</p>
+                      <p className="text-2xl font-bold text-blue-700">{filteredLeads.filter(l => l.stage !== 'PERDIDA').length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-amber-500 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-amber-600">Valor Total</p>
+                      <p className="text-2xl font-bold text-amber-700">${totalPipelineValue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center">
+                      <TrendingDown className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-red-600">Perdidos</p>
+                      <p className="text-2xl font-bold text-red-700">{filteredLeads.filter(l => l.stage === 'PERDIDA').length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Leads por Etapa */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Layers className="h-4 w-4" /> Leads por Etapa
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {pipelineStages.map((stage) => {
+                    const count = filteredLeads.filter(l => l.stage === stage.key).length;
+                    const percentage = filteredLeads.length > 0 ? (count / filteredLeads.length) * 100 : 0;
+                    return (
+                      <div key={stage.key} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                            {stage.label}
+                          </span>
+                          <span className="font-medium">{count} ({percentage.toFixed(1)}%)</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${percentage}%`, backgroundColor: stage.color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Leads por Fuente */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <PieChart className="h-4 w-4" /> Leads por Fuente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {LEAD_SOURCES.map((source) => {
+                    const count = filteredLeads.filter(l => l.source === source.key).length;
+                    if (count === 0) return null;
+                    return (
+                      <div key={source.key} className="p-3 bg-slate-50 rounded-lg text-center">
+                        <p className="text-lg">{source.icon}</p>
+                        <p className="text-xs text-slate-600 mt-1">{source.label}</p>
+                        <p className="text-lg font-bold text-slate-800">{count}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Tasa de Conversión */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Tasa de Conversión</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-3xl font-bold text-emerald-600">
+                      {filteredLeads.length > 0 
+                        ? ((filteredLeads.filter(l => l.stage === 'CONTRATO').length / filteredLeads.length) * 100).toFixed(1)
+                        : 0}%
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Cerrados</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-3xl font-bold text-red-600">
+                      {filteredLeads.length > 0 
+                        ? ((filteredLeads.filter(l => l.stage === 'PERDIDA').length / filteredLeads.length) * 100).toFixed(1)
+                        : 0}%
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Perdidos</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-lg">
+                    <p className="text-3xl font-bold text-blue-600">
+                      {filteredLeads.length > 0 
+                        ? ((filteredLeads.filter(l => l.stage !== 'PERDIDA' && l.stage !== 'CONTRATO').length / filteredLeads.length) * 100).toFixed(1)
+                        : 0}%
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">En Proceso</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDashboardDialogOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Gestión de Usuarios */}
+      <Dialog open={usersDialogOpen} onOpenChange={setUsersDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-emerald-600" />
+              Gestión de Usuarios
+            </DialogTitle>
+            <DialogDescription>
+              Administra los usuarios del sistema
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            {/* Lista de usuarios existentes */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Usuarios existentes</h4>
+              {users.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-sm">{user.name}</p>
+                    <p className="text-xs text-slate-500">@{user.username} • {ROLE_PERMISSIONS[user.role].label}</p>
+                  </div>
+                  {user.id !== '1' && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-red-500 hover:bg-red-50"
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Formulario nuevo usuario */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3">Crear nuevo usuario</h4>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nombre</Label>
+                    <Input 
+                      value={newUserForm.name}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, name: e.target.value })}
+                      placeholder="Juan Pérez"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Usuario</Label>
+                    <Input 
+                      value={newUserForm.username}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
+                      placeholder="juanp"
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Contraseña</Label>
+                    <Input 
+                      type="password"
+                      value={newUserForm.password}
+                      onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                      placeholder="••••••"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Rol</Label>
+                    <Select value={newUserForm.role} onValueChange={(value) => setNewUserForm({ ...newUserForm, role: value as UserRole })}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="vendedor">Vendedor</SelectItem>
+                        <SelectItem value="viewer">Solo Lectura</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={handleCreateUser} size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700">
+                  <UserPlus className="h-4 w-4 mr-1" /> Crear Usuario
+                </Button>
+              </div>
+            </div>
+            
+            {/* Descripción de roles */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-2">Permisos por Rol</h4>
+              <div className="space-y-2 text-xs">
+                {Object.entries(ROLE_PERMISSIONS).map(([key, perm]) => (
+                  <div key={key} className="p-2 bg-slate-50 rounded">
+                    <p className="font-medium">{perm.label}</p>
+                    <p className="text-slate-500">{perm.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsersDialogOpen(false)}>
               Cerrar
             </Button>
           </DialogFooter>
