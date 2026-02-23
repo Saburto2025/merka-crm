@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const { firstName, lastName, email, phone, whatsapp, company, message, projectId } = body;
+    const { firstName, lastName, email, whatsapp, company, message, projectId } = body;
 
     // Validación básica
     if (!firstName || !lastName) {
@@ -18,13 +18,12 @@ export async function POST(request: NextRequest) {
 
     // Crear el lead público usando Vercel Postgres
     const result = await sql`
-      INSERT INTO public_leads (id, "firstName", "lastName", email, phone, whatsapp, company, message, source, "createdAt", imported)
+      INSERT INTO public_leads (id, "firstName", "lastName", email, whatsapp, company, message, source, "createdAt", imported)
       VALUES (
         gen_random_uuid(),
         ${firstName},
         ${lastName},
         ${email || null},
-        ${phone || null},
         ${whatsapp || null},
         ${company || null},
         ${message || null},

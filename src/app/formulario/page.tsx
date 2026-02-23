@@ -6,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Send, CheckCircle, Loader2, MessageCircle, Mail, Phone, Building2, User } from 'lucide-react';
+import { Send, CheckCircle, Loader2, MessageCircle, Mail, Building2, User } from 'lucide-react';
 
 export default function FormularioLead() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
     whatsapp: '',
     company: '',
     message: '',
@@ -42,7 +41,6 @@ export default function FormularioLead() {
           firstName: '',
           lastName: '',
           email: '',
-          phone: '',
           whatsapp: '',
           company: '',
           message: '',
@@ -139,7 +137,7 @@ export default function FormularioLead() {
               />
             </div>
 
-            {/* Email y Teléfono */}
+            {/* Email y WhatsApp */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-1">
@@ -155,31 +153,17 @@ export default function FormularioLead() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-1">
-                  <Phone className="h-3 w-3" /> Teléfono
+                <Label htmlFor="whatsapp" className="flex items-center gap-1">
+                  <MessageCircle className="h-3 w-3" /> WhatsApp
                 </Label>
                 <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  id="whatsapp"
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
                   placeholder="+506 0000 0000"
                   className="bg-white"
                 />
               </div>
-            </div>
-
-            {/* WhatsApp */}
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp" className="flex items-center gap-1">
-                <MessageCircle className="h-3 w-3" /> WhatsApp
-              </Label>
-              <Input
-                id="whatsapp"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                placeholder="+506 0000 0000"
-                className="bg-white"
-              />
             </div>
 
             {/* Mensaje */}
@@ -221,20 +205,6 @@ export default function FormularioLead() {
               )}
             </Button>
           </form>
-
-          {/* Contacto directo */}
-          <div className="mt-6 pt-4 border-t border-slate-200 text-center">
-            <p className="text-xs text-slate-500 mb-2">¿Prefieres contactarnos directamente?</p>
-            <a 
-              href="https://wa.me/50664498045" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp: +506 6449 8045
-            </a>
-          </div>
         </CardContent>
       </Card>
     </div>

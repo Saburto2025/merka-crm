@@ -200,89 +200,27 @@ function LeadCard({ lead, pipelineStages, onView, onEdit, onDelete, onStageChang
           </div>
         )}
         
-        {/* FLECHAS DIRECCIONALES GRANDES */}
+        {/* Selector de etapa simple */}
         {lead.stage !== 'PERDIDA' && (
           <div className="mt-3 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between gap-2">
-              {/* Flecha Izquierda - Etapa Anterior */}
-              {prevStage ? (
-                <button 
-                  onClick={() => onStageChange(lead, prevStage.key)} 
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-md active:scale-95"
-                  style={{ 
-                    borderColor: prevStage.color, 
-                    color: prevStage.color, 
-                    backgroundColor: `${prevStage.color}15` 
-                  }}
-                  title={`Mover a: ${prevStage.label}`}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  <span className="text-xs font-medium hidden sm:inline">{prevStage.label}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full text-xs text-slate-500 hover:text-slate-700 flex items-center justify-center gap-1 px-2 py-1.5 rounded hover:bg-slate-50 border border-slate-200">
+                  <Layers className="h-3 w-3" />
+                  Cambiar etapa...
                 </button>
-              ) : (
-                <div className="flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 text-slate-300">
-                  <ArrowLeft className="h-5 w-5" />
-                </div>
-              )}
-              
-              {/* Indicador de etapa actual */}
-              <div className="flex-1 text-center">
-                <Badge 
-                  variant="outline" 
-                  className="text-xs px-2"
-                  style={{ 
-                    borderColor: currentStage?.color, 
-                    color: currentStage?.color,
-                    backgroundColor: `${currentStage?.color}10`
-                  }}
-                >
-                  {currentStage?.label}
-                </Badge>
-              </div>
-              
-              {/* Flecha Derecha - Etapa Siguiente */}
-              {nextStage ? (
-                <button 
-                  onClick={() => onStageChange(lead, nextStage.key)} 
-                  className="flex items-center gap-1 px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-md active:scale-95"
-                  style={{ 
-                    borderColor: nextStage.color, 
-                    color: nextStage.color, 
-                    backgroundColor: `${nextStage.color}15` 
-                  }}
-                  title={`Mover a: ${nextStage.label}`}
-                >
-                  <span className="text-xs font-medium hidden sm:inline">{nextStage.label}</span>
-                  <ArrowRight className="h-5 w-5" />
-                </button>
-              ) : (
-                <div className="flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 text-slate-300">
-                  <ArrowRight className="h-5 w-5" />
-                </div>
-              )}
-            </div>
-            
-            {/* Dropdown para ir a cualquier etapa */}
-            <div className="mt-2 flex justify-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-100">
-                    <Layers className="h-3 w-3" />
-                    Ir a otra etapa...
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="center">
-                  {pipelineStages.filter(s => s.key !== lead.stage).map((stage) => (
-                    <DropdownMenuItem key={stage.key} onClick={() => onStageChange(lead, stage.key)}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: stage.color }} />
-                        {stage.label}
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {pipelineStages.filter(s => s.key !== lead.stage).map((stage) => (
+                  <DropdownMenuItem key={stage.key} onClick={() => onStageChange(lead, stage.key)}>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                      {stage.label}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </CardContent>
@@ -1191,34 +1129,65 @@ export default function MerkaCRM() {
           </div>
         ) : (
           <div className="relative h-full">
-            {/* Flechas de navegación del Pipeline */}
-            {canScrollLeft && (
+            {/* Barra de navegación del Pipeline */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-white/95 backdrop-blur rounded-full shadow-lg px-3 py-1.5 border border-slate-200">
+              {/* Ir al inicio */}
+              <button
+                onClick={() => {
+                  if (pipelineScrollRef.current) {
+                    pipelineScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                title="Ir al inicio"
+              >
+                <ChevronsLeft className="h-5 w-5 text-slate-600" />
+              </button>
+              
+              {/* Desplazar izquierda */}
               <button
                 onClick={() => {
                   if (pipelineScrollRef.current) {
                     pipelineScrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
                   }
                 }}
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white shadow-lg rounded-full p-3 border border-slate-200 transition-all hover:scale-110"
-                title="Desplazar a la izquierda"
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                title="Mover a la izquierda"
               >
-                <ChevronsLeft className="h-6 w-6 text-slate-600" />
+                <ArrowLeft className="h-5 w-5 text-slate-600" />
               </button>
-            )}
-            
-            {canScrollRight && (
+              
+              {/* Indicador de etapas */}
+              <div className="px-3 text-xs text-slate-500 font-medium">
+                {pipelineStages.length} etapas
+              </div>
+              
+              {/* Desplazar derecha */}
               <button
                 onClick={() => {
                   if (pipelineScrollRef.current) {
                     pipelineScrollRef.current.scrollBy({ left: 300, behavior: 'smooth' });
                   }
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white shadow-lg rounded-full p-3 border border-slate-200 transition-all hover:scale-110"
-                title="Desplazar a la derecha"
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                title="Mover a la derecha"
               >
-                <ChevronsRight className="h-6 w-6 text-slate-600" />
+                <ArrowRight className="h-5 w-5 text-slate-600" />
               </button>
-            )}
+              
+              {/* Ir al final */}
+              <button
+                onClick={() => {
+                  if (pipelineScrollRef.current) {
+                    pipelineScrollRef.current.scrollTo({ left: pipelineScrollRef.current.scrollWidth, behavior: 'smooth' });
+                  }
+                }}
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+                title="Ir al final"
+              >
+                <ChevronsRight className="h-5 w-5 text-slate-600" />
+              </button>
+            </div>
             
             <ScrollArea className="h-full">
               <div 
