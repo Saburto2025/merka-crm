@@ -463,14 +463,30 @@ export default function MerkaCRM() {
   const fetchPublicLeads = async () => {
     setIsLoadingPublicLeads(true);
     try {
+      // Intentar leer de la API primero
       const response = await fetch('/api/public/lead?imported=false');
       const data = await response.json();
-      if (response.ok) {
-        setPublicLeads(data.leads || []);
-      }
+      
+      // También leer de localStorage
+      const localLeads = getFromStorage<any[]>('merka-public-leads', []);
+      const importedLeadIds = getFromStorage<string[]>('merka-imported-lead-ids', []);
+      const unimportedLocalLeads = localLeads.filter(l => !importedLeadIds.includes(l.id));
+      
+      // Combinar leads
+      const allLeads = [...(data.leads || []), ...unimportedLocalLeads];
+      
+      // Remover duplicados por id
+      const uniqueLeads = allLeads.filter((lead, index, self) => 
+        index === self.findIndex(l => l.id === lead.id)
+      );
+      
+      setPublicLeads(uniqueLeads);
     } catch (error) {
-      console.error('Error fetching public leads:', error);
-      toast.error('Error al cargar leads del formulario');
+      // Si falla la API, solo leer de localStorage
+      const localLeads = getFromStorage<any[]>('merka-public-leads', []);
+      const importedLeadIds = getFromStorage<string[]>('merka-imported-lead-ids', []);
+      const unimportedLocalLeads = localLeads.filter(l => !importedLeadIds.includes(l.id));
+      setPublicLeads(unimportedLocalLeads);
     } finally {
       setIsLoadingPublicLeads(false);
     }
@@ -491,7 +507,6 @@ export default function MerkaCRM() {
       firstName: publicLead.firstName,
       lastName: publicLead.lastName,
       email: publicLead.email || undefined,
-      phone: publicLead.phone || undefined,
       whatsapp: publicLead.whatsapp || undefined,
       company: publicLead.company || undefined,
       description: publicLead.message || undefined,
@@ -503,7 +518,11 @@ export default function MerkaCRM() {
 
     setLeads(prev => [...prev, newLead]);
 
-    // Marcar como importado en la base de datos
+    // Marcar como importado en localStorage
+    const importedIds = getFromStorage<string[]>('merka-imported-lead-ids', []);
+    saveToStorage('merka-imported-lead-ids', [...importedIds, publicLead.id]);
+
+    // Intentar marcar en la base de datos también
     try {
       await fetch(`/api/public/lead/${publicLead.id}`, {
         method: 'PATCH',
@@ -511,7 +530,7 @@ export default function MerkaCRM() {
         body: JSON.stringify({ imported: true }),
       });
     } catch (error) {
-      console.error('Error marking lead as imported:', error);
+      console.error('Error marking lead as imported in DB:', error);
     }
 
     // Remover de la lista local
@@ -527,6 +546,7 @@ export default function MerkaCRM() {
 
     const firstStage = pipelineStages.find(s => s.key !== 'PERDIDA');
     let imported = 0;
+    const newImportedIds: string[] = [];
 
     for (const publicLead of publicLeads) {
       const newLead: Lead = {
@@ -535,7 +555,6 @@ export default function MerkaCRM() {
         firstName: publicLead.firstName,
         lastName: publicLead.lastName,
         email: publicLead.email || undefined,
-        phone: publicLead.phone || undefined,
         whatsapp: publicLead.whatsapp || undefined,
         company: publicLead.company || undefined,
         description: publicLead.message || undefined,
@@ -546,19 +565,13 @@ export default function MerkaCRM() {
       };
 
       setLeads(prev => [...prev, newLead]);
-
-      try {
-        await fetch(`/api/public/lead/${publicLead.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imported: true }),
-        });
-      } catch (error) {
-        console.error('Error marking lead as imported:', error);
-      }
-
+      newImportedIds.push(publicLead.id);
       imported++;
     }
+
+    // Marcar todos como importados en localStorage
+    const existingImportedIds = getFromStorage<string[]>('merka-imported-lead-ids', []);
+    saveToStorage('merka-imported-lead-ids', [...existingImportedIds, ...newImportedIds]);
 
     setPublicLeads([]);
     toast.success(`${imported} leads importados al CRM`);
