@@ -1562,17 +1562,60 @@ export default function MerkaCRM() {
       </Dialog>
 
       {/* Dialog: Leads del Formulario */}
-      <Dialog open={publicLeadsDialogOpen} onOpenChange={setPublicLeadsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Inbox className="h-5 w-5 text-emerald-600" />
-              Leads del Formulario
-            </DialogTitle>
-            <DialogDescription>
-              Personas que han llenado el formulario público y están pendientes de importar
-            </DialogDescription>
-          </DialogHeader>
+      {/* Dialog: Leads del Formulario */}
+<Dialog open={publicLeadsDialogOpen} onOpenChange={setPublicLeadsDialogOpen}>
+  <DialogContent className="max-w-2xl max-h-[80vh]">
+    <DialogHeader>
+      <DialogTitle className="flex items-center gap-2">
+        <Inbox className="h-5 w-5 text-emerald-600" />
+        Leads del Formulario
+      </DialogTitle>
+      <DialogDescription>
+        Personas que han llenado el formulario público para este negocio.
+      </DialogDescription>
+    </DialogHeader>
+
+    <div className="text-center py-6">
+      {!publicLeads || publicLeads.length === 0 ? (
+        <div className="py-8">
+          <Inbox className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500">No hay leads nuevos aquí.</p>
+        </div>
+      ) : (
+        /* Aquí va la lista de leads si los hay (puedes dejar lo que ya tenías) */
+        <div className="space-y-4 mb-6">
+           {/* ... tu código actual de la lista ... */}
+        </div>
+      )}
+
+      {/* RECUADRO DEL LINK PERSONALIZADO */}
+      <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
+        <p className="text-xs text-emerald-700 font-bold uppercase mb-2">Tu Link de Captación</p>
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-emerald-200 mb-3 text-left">
+          <code className="flex-1 text-[10px] text-emerald-600 truncate">
+            {typeof window !== 'undefined' 
+              ? `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}` 
+              : '/formulario'}
+          </code>
+        </div>
+        <Button 
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={() => {
+            const bizId = localStorage.getItem('crm_user_id') || 'general';
+            const link = `${window.location.origin}/formulario?b=${bizId}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent('Hola! Por favor llena tus datos aquí: ' + link)}`, '_blank');
+          }}
+        >
+          <MessageCircle className="h-4 w-4 mr-2" /> Compartir por WhatsApp
+        </Button>
+      </div>
+    </div>
+    
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setPublicLeadsDialogOpen(false)}>Cerrar</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
           
           <div className="py-4">
             {isLoadingPublicLeads ? (
