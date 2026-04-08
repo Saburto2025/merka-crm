@@ -526,26 +526,41 @@ export default function MerkaCRM() {
     toast.success('Lead eliminado');
   };
 
-  // Public Leads Management
+  // Public Leads Management - MODIFICADO PARA MULTI-NEGOCIO
   const fetchPublicLeads = async () => {
     setIsLoadingPublicLeads(true);
     try {
-      // Intentar leer de la API primero
-      const response = await fetch('/api/public/lead?imported=false');
+      // 1. Obtenemos el ID del negocio que configuramos en la PC (ej. Seguros-Lafise)
+      const businessId = typeof window !== 'undefined' 
+        ? localStorage.getItem('crm_user_id') || 'general' 
+        : 'general';
+
+      // 2. Pedimos a la API los leads filtrando por ese negocio específico
+      const response = await fetch(`/api/public/lead?b=${businessId}&imported=false`);
       const data = await response.json();
       
-      // También leer de localStorage
+      // 3. También leer de localStorage (respaldo local)
       const localLeads = getFromStorage<any[]>('merka-public-leads', []);
       const importedLeadIds = getFromStorage<string[]>('merka-imported-lead-ids', []);
       const unimportedLocalLeads = localLeads.filter(l => !importedLeadIds.includes(l.id));
       
-      // Combinar leads
+      // 4. Combinar leads (API + Locales)
       const allLeads = [...(data.leads || []), ...unimportedLocalLeads];
       
-      // Remover duplicados por id
+      // 5. Remover duplicados
       const uniqueLeads = allLeads.filter((lead, index, self) => 
         index === self.findIndex(l => l.id === lead.id)
       );
+
+      // Aquí deberías tener una línea como setPublicLeads(uniqueLeads) o similar
+      setPublicLeads(uniqueLeads);
+
+    } catch (error) {
+      console.error("Error al cargar leads públicos:", error);
+    } finally {
+      setIsLoadingPublicLeads(false);
+    }
+  };
       
       setPublicLeads(uniqueLeads);
     } catch (error) {
