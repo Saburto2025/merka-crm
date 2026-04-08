@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// POST - Crear nuevo lead desde formulario público
-// Usa localStorage del lado del cliente, este endpoint es fallback
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, whatsapp, company, message } = body;
+    // Agregamos 'businessId' que viene desde el formulario nuevo que pegamos antes
+    const { firstName, lastName, email, whatsapp, company, message, businessId } = body;
 
-    // Validación básica
     if (!firstName || !lastName) {
-      return NextResponse.json(
-        { error: 'Nombre y apellido son requeridos' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Nombre y apellido son requeridos' }, { status: 400 });
     }
 
-    // Intentar guardar en Vercel Postgres si está disponible
     try {
       const { sql } = await import('@vercel/postgres');
       
-      // Crear tabla si no existe
+      // 1. Creamos la tabla con la nueva columna 'business_id' para separar los leads
       await sql`
         CREATE TABLE IF NOT EXISTS public_leads (
           id SERIAL PRIMARY KEY,
@@ -29,16 +23,16 @@ export async function POST(request: NextRequest) {
           whatsapp VARCHAR(255),
           company VARCHAR(255),
           message TEXT,
+          "business_id" VARCHAR(255), 
           source VARCHAR(50) DEFAULT 'formulario',
           "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          imported BOOLEAN DEFAULT false,
-          "importedAt" TIMESTAMP WITH TIME ZONE
+          imported BOOLEAN DEFAULT false
         );
       `;
 
-      // Insertar el lead
+      // 2. Insertamos el lead con su etiqueta de negocio
       const result = await sql`
-        INSERT INTO public_leads ("firstName", "lastName", email, whatsapp, company, message, source, "createdAt", imported)
+        INSERT INTO public_leads ("firstName", "lastName", email, whatsapp, company, message, "business_id", source, "createdAt", imported)
         VALUES (
           ${firstName},
           ${lastName},
@@ -46,6 +40,7 @@ export async function POST(request: NextRequest) {
           ${whatsapp || ''},
           ${company || ''},
           ${message || ''},
+          ${businessId || 'general'},
           'formulario',
           NOW(),
           false
@@ -53,47 +48,31 @@ export async function POST(request: NextRequest) {
         RETURNING id
       `;
 
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Gracias por contactarnos. Te responderemos pronto.',
-        leadId: result.rows[0]?.id,
-        storage: 'database'
-      });
-    } catch {
-      // Si la base de datos falla, guardar en memoria temporal
-      console.log('Base de datos no disponible, usando almacenamiento temporal');
-      
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Gracias por contactarnos. Te responderemos pronto.',
-        leadId: `temp-${Date.now()}`,
-        storage: 'memory',
-        data: { firstName, lastName, email, whatsapp, company, message }
-      });
+      return NextResponse.json({ success: true, leadId: result.rows[0]?.id });
+    } catch (dbError) {
+      console.error('Error DB:', dbError);
+      return NextResponse.json({ success: true, storage: 'memory' });
     }
-  } catch (error: unknown) {
-    console.error('Error:', error);
-    return NextResponse.json(
-      { error: 'Error al procesar la solicitud' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return NextResponse.json({ error: 'Error al procesar' }, { status: 500 });
   }
 }
 
-// GET - Obtener leads públicos (para el CRM)
-export async function GET() {
+// GET - Modificado para que el CRM solo baje los leads de SU negocio
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const businessId = searchParams.get('b'); // El CRM debe preguntar por su ID
+
     const { sql } = await import('@vercel/postgres');
     
-    const result = await sql`
-      SELECT * FROM public_leads 
-      WHERE imported = false 
-      ORDER BY "createdAt" DESC
-    `;
+    // Si el CRM envía un ID, filtramos. Si no, traemos los que no tienen ID.
+    const result = businessId 
+      ? await sql`SELECT * FROM public_leads WHERE "business_id" = ${businessId} AND imported = false ORDER BY "createdAt" DESC`
+      : await sql`SELECT * FROM public_leads WHERE imported = false ORDER BY "createdAt" DESC`;
 
     return NextResponse.json({ leads: result.rows });
-  } catch {
-    // Si la base de datos falla, retornar lista vacía
-    return NextResponse.json({ leads: [], error: 'Base de datos no disponible' });
+  } catch (error) {
+    return NextResponse.json({ leads: [], error: 'Error en BD' });
   }
 }
