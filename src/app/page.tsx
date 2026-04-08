@@ -1564,20 +1564,47 @@ export default function MerkaCRM() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
               </div>
             ) : publicLeads.length === 0 ? (
-             <div className="text-center py-8">
+            <div className="text-center py-8">
   <Inbox className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-  <p className="text-slate-500">No hay leads pendientes</p>
-  <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-    <p className="text-xs text-emerald-700 font-medium mb-1">Tu link personalizado:</p>
-    <code className="bg-white px-2 py-1 rounded border border-emerald-200 text-xs text-emerald-600">
-      {typeof window !== 'undefined' 
-        ? `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}` 
-        : '/formulario'}
-    </code>
-    <p className="text-[10px] text-emerald-500 mt-2">
-      Usa este link para que los leads lleguen solo a este CRM.
+  <p className="text-slate-500 font-medium">Leads del Formulario Público</p>
+  
+  <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
+    <p className="text-xs text-emerald-700 font-bold uppercase tracking-wider mb-2">
+      Tu Link de Captación Personalizado
     </p>
+    <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-emerald-200 mb-3">
+      <code className="flex-1 text-[11px] text-emerald-600 truncate text-left px-1">
+        {typeof window !== 'undefined' 
+          ? `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}` 
+          : '/formulario'}
+      </code>
+      <Button 
+        size="sm" 
+        variant="ghost" 
+        className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+        onClick={() => {
+          const link = `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}`;
+          navigator.clipboard.writeText(link);
+          alert("¡Link copiado al portapapeles!");
+        }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      </Button>
+    </div>
+
+    <div className="flex gap-2">
+      <Button 
+        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9"
+        onClick={() => {
+          const link = `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}`;
+          window.open(`https://wa.me/?text=${encodeURIComponent('Hola, por favor completa este formulario: ' + link)}`, '_blank');
+        }}
+      >
+        <MessageCircle className="h-4 w-4 mr-2" /> Compartir por WhatsApp
+      </Button>
+    </div>
   </div>
+</div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
