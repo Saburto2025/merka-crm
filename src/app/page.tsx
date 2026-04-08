@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MessageCircle, Inbox, Copy, Check } from 'lucide-react';
 import {
   Select,
   SelectContent,
