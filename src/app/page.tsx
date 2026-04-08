@@ -1564,13 +1564,20 @@ export default function MerkaCRM() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
               </div>
             ) : publicLeads.length === 0 ? (
-              <div className="text-center py-8">
-                <Inbox className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500">No hay leads pendientes</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Comparte el link: <code className="bg-slate-100 px-2 py-1 rounded">/formulario</code>
-                </p>
-              </div>
+             <div className="text-center py-8">
+  <Inbox className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+  <p className="text-slate-500">No hay leads pendientes</p>
+  <div className="mt-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+    <p className="text-xs text-emerald-700 font-medium mb-1">Tu link personalizado:</p>
+    <code className="bg-white px-2 py-1 rounded border border-emerald-200 text-xs text-emerald-600">
+      {typeof window !== 'undefined' 
+        ? `${window.location.origin}/formulario?b=${localStorage.getItem('crm_user_id') || 'general'}` 
+        : '/formulario'}
+    </code>
+    <p className="text-[10px] text-emerald-500 mt-2">
+      Usa este link para que los leads lleguen solo a este CRM.
+    </p>
+  </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
